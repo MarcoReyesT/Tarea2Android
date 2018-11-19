@@ -1,13 +1,16 @@
 package com.example.marco.tareaandroid2;
 
+import android.content.Intent;
+import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
+import android.widget.ListView;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.VolleyError;
@@ -20,27 +23,48 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
 
+import java.util.ArrayList;
+
 public class MainActivity extends AppCompatActivity {
 
-    String url = "https://jsonplaceholder.typicode.com/posts";
+    String[] titulos;
+
+    public static ArrayList<Post> array;
+    ArrayAdapter adaptador;
+
+    private final String url = "https://jsonplaceholder.typicode.com/posts";
     RequestQueue requestQueue;
-    EditText filtro;
+    //EditText filtro;
     Button btnBuscar;
-    TextView listaPosts;
+    ListView listaPosts;
+    public Post post;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        this.filtro = (EditText) findViewById(R.id.text_filtro);
+        this.getSupportActionBar().setTitle("Lista de Posts");
+        //this.filtro = (EditText) findViewById(R.id.text_filtro);
         this.btnBuscar = (Button) findViewById(R.id.boton_buscar);
-        this.listaPosts = (TextView) findViewById(R.id.lista_posts);
-        this.listaPosts.setMovementMethod(new ScrollingMovementMethod());
-        this.listaPosts.setText("Nada que mostrar...");
+        this.listaPosts = (ListView) findViewById(R.id.lista_posts);
+        array = new ArrayList<Post>();
+        this.titulos = new String[0];
+        mostrar();
+
         requestQueue = Volley.newRequestQueue(this);
+        listaPosts.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+            public void onItemClick(AdapterView<?> adapter, View v, int position, long id) {
+
+                String selItem = (String) listaPosts.getItemAtPosition(position); //
+                //String value = selItem.toString(); //getter method
+                mostrarComentarios(v, position);
+
+            }
+        });
     }
 
-    private void listarPosts(String asd) {
+    private void listarPosts(String filtro) {
 
         JsonArrayRequest arrReq = new JsonArrayRequest(Request.Method.GET, url, null,
                 new Response.Listener<JSONArray>() {
@@ -52,14 +76,17 @@ public class MainActivity extends AppCompatActivity {
                                     JSONObject jsonObj = response.getJSONObject(i);
                                     String titulo = jsonObj.get("title").toString();
                                     String cuerpo = jsonObj.get("body").toString();
-                                    addToRepoList(titulo, cuerpo);
+                                    String idUsuario = jsonObj.get("userId").toString();
+                                    String idPost = jsonObj.get("id").toString();
+                                    addPost(idPost, titulo, cuerpo, idUsuario);
                                 } catch (JSONException e) {
                                     Log.e("Volley", "Invalid JSON Object.");
                                 }
 
                             }
+                            mostrar();
                         } else {
-                            setRepoListText("No existen posts");
+                            limpiar();
                         }
 
                     }
@@ -68,7 +95,6 @@ public class MainActivity extends AppCompatActivity {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        setRepoListText("Error while calling REST API");
                         Log.e("Volley", error.toString());
                     }
                 }
@@ -77,21 +103,43 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void limpiar() {
-        this.listaPosts.setText("Nada que mostrar");
+        //this.elementos = new String[1];
+        //this.elementos[0] = "Nada que mostrar...";
     }
 
-    private void addToRepoList(String repoName, String lastUpdated) {
-        String strRow = repoName + " / " + lastUpdated;
-        String currentText = listaPosts.getText().toString();
-        this.listaPosts.setText(currentText + "\n\n" + strRow);
-    }
-
-    private void setRepoListText(String str) {
-        this.listaPosts.setText(str);
+    private void addPost(String idPostStr, String titulo, String cuerpo, String idUsuarioStr) {
+        int idPost = Integer.parseInt(idPostStr);
+        int idUsuario = Integer.parseInt(idUsuarioStr);
+        Post p = new Post(idPost, titulo, cuerpo, idUsuario);
+        array.add(p);
     }
 
     public void buscarPosts(View v) {
-        limpiar();
-        listarPosts(filtro.getText().toString());
+        listarPosts("filtro");
     }
+
+    private void mostrar(){
+        this.titulos = getTitulos();
+        this.adaptador = new ArrayAdapter<String>(this,
+                R.layout.activity_elemento, titulos);
+        listaPosts.setAdapter(this.adaptador);
+    }
+
+    public String[] getTitulos(){
+        //String[] titles = {"asddww", "asdaWWW"};
+        String[] titles = new String[this.array.size()];
+        for (int i = 0; i < titles.length; i++){
+            titles[i] = array.get(i).getTitulo();
+        }
+        return titles;
+    }
+
+    public void mostrarComentarios(View v, int p) {
+        Intent intent = new Intent(this, coments.class);
+        //EditText editText = (EditText) findViewById(R.id.editText);
+        //String message = editText.getText().toString();
+        intent.putExtra("idPost", p);
+        startActivity(intent);
+    }
+
 }
